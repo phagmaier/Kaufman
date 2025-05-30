@@ -31,8 +31,8 @@ include_directories(src)
 set(SOURCES
     src/main.cpp
     src/Gstring.cpp
-    src/Gbuff.cpp
-    src/Display.cpp
+    #src/Gbuff.cpp
+    src/Editor.cpp
 )
 
 # Create the executable
