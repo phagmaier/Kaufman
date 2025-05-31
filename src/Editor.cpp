@@ -96,29 +96,24 @@ void Editor::down_key() {
 }
 
 bool Editor::pop_prev_add_cur(const ui idx) {
-  if (idx == 0 || idx >= buffer.size())
-    return false;
-
   Gstring *cur = buffer[idx].get();
   Gstring *prev = buffer[idx - 1].get();
-
-  char head = cur->char_at(0);
+  char c = cur->char_at(0);
   cur->del_char(0);
-
-  if (prev->size < maxCols) {
-    prev->add_char(head, prev->size);
-  } else {
-    char carry = prev->char_at(maxCols - 1);
-    prev->replace(head, maxCols - 1);
-    cur->add_char(carry, 0);
-  }
-
+  prev->add_char(c, prev->size);
   if (!cur->size) {
     del_line(idx);
     prev->newLine = true;
     return false;
   }
-  return !cur->newLine;
+  if (cur->newLine) {
+    return false;
+  }
+  if (idx == buffer.size() - 1) {
+    cur->newLine = true;
+    return false;
+  }
+  return true;
 }
 
 bool Editor::pop_prev_add_cur_str(const ui idx) {
@@ -147,12 +142,19 @@ bool Editor::pop_prev_add_cur_str(const ui idx) {
 
 void Editor::del_zero() {
   ui cur_idx = row;
+  if (!buffer[cur_idx]->size) {
+    buffer[cur_idx - 1]->newLine = true;
+    del_line(cur_idx);
+
+    return;
+  }
   if (buffer[row - 1]->newLine) {
     buffer[row - 1]->newLine = false;
     while (pop_prev_add_cur_str(cur_idx)) {
       ++cur_idx;
     }
   } else {
+    buffer[row - 1]->del_char(buffer[row - 1]->size - 1);
     while (pop_prev_add_cur(cur_idx)) {
       ++cur_idx;
     }
