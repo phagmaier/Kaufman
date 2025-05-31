@@ -42,6 +42,19 @@
 
 ---
 
+## 📋 TODO
+
+1. separate editor and buffer into two structs
+2. Add actual vim like modes
+3. Allow user to save and load file
+4. Allow user to disable line wraps
+5. Format into screenplay format and save in format 
+6. Parse screenplay format
+7. setup hotkeys for dialogue action character etc...
+8. Error test
+9. Optimize algo
+---
+
 ## 🚀 Vision
 
 - Terminal-based screenplay writing as fluid as prose editing in `vim`
@@ -75,7 +88,9 @@
 3. **Build the project:**
    ```sh
    cd Kaufman
-   make
+   mkdir build 
+   cd build
+   cmake .. && make && ./runme
    ```
 4. **Run the editor:**
    ```sh
