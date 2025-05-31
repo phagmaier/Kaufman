@@ -1,4 +1,5 @@
 #include "Editor.h"
+#include <cstring>
 
 Editor::Editor(const std::string &fileName)
     : fileName{fileName}, row{0}, col{0}, firstVisibleRow{0} {
@@ -11,7 +12,7 @@ Editor::Editor(const std::string &fileName)
   Gstring::MAXLEN = maxCols;
   buffer.reserve(100);
   buffer.emplace_back(std::make_unique<Gstring>());
-  disp_str = (char *)malloc(1000);
+  disp_str = (char *)malloc(maxCols);
   /* load/save*/
   // CODE HERE
   /* load/save*/
@@ -28,7 +29,7 @@ Editor::Editor(const char *fileName)
   Gstring::MAXLEN = maxCols;
   buffer.reserve(100);
   buffer.emplace_back(std::make_unique<Gstring>());
-  disp_str = (char *)malloc(1000);
+  disp_str = (char *)malloc(maxCols);
   /* load/save*/
   // CODE HERE
   /* load/save*/
@@ -38,10 +39,7 @@ void Editor::resize() { std::cerr << "ERROR UNABLE TO RESIZE YET"; }
 void Editor::load_file() { std::cerr << "LOAD FILE: NOT IMPLIMENTED YET"; }
 void Editor::save_file() { std::cerr << "SAVE FILE: NOT IMPLIMENTED YET"; }
 
-void Editor::del_line(const ui index) {
-  buffer[index]->free_str();
-  buffer.erase(buffer.begin() + index);
-}
+void Editor::del_line(const ui index) { buffer.erase(buffer.begin() + index); }
 
 void Editor::add_char_overflow(const char c) {
   Gstring *cur = buffer[row].get();
@@ -97,55 +95,54 @@ void Editor::down_key() {
   col = buffer[row]->size < col ? buffer[row]->size : col;
 }
 
-bool Editor::pop_prev_add_cur_str(const ui index) {
-  if (index >= buffer.size()) {
+bool Editor::pop_prev_add_cur(const ui idx) {
+  if (idx == 0 || idx >= buffer.size())
     return false;
-  }
-  Gstring *cur = buffer[index].get();
-  Gstring *prev = buffer[index - 1].get();
-  const ui cpy_size = std::min(maxCols - prev->size, cur->size);
-  if (cpy_size) {
-    char *tmp = cur->pop_str(cpy_size);
-    prev->append_str(tmp, cpy_size);
-    if (!cur->size) {
-      del_line(index);
-      prev->newLine = true;
-      return false;
-    }
-    if (cur->newLine) {
-      return false;
-    }
-    return true;
-  }
-  prev->newLine = false;
 
-  return false;
-}
+  Gstring *cur = buffer[idx].get();
+  Gstring *prev = buffer[idx - 1].get();
 
-bool Editor::pop_prev_add_cur(const ui index) {
-  if (index >= buffer.size()) {
-    return false;
-  }
-  Gstring *cur = buffer[index].get();
-  Gstring *prev = buffer[index - 1].get();
-  // Don't Think i need this think it's guranteed to have size
-  if (prev->size) {
-    prev->replace(cur->char_at(0), prev->size - 1);
-  } else {
-    std::cerr << "POP PREV ADD CUR: DON'T THINK THIS SHOULD EVER RUN IF IT "
-                 "DOES INSPECT LOGIC";
-    prev->add_char(cur->char_at(0), 0);
-  }
+  char head = cur->char_at(0);
   cur->del_char(0);
+
+  if (prev->size < maxCols) {
+    prev->add_char(head, prev->size);
+  } else {
+    char carry = prev->char_at(maxCols - 1);
+    prev->replace(head, maxCols - 1);
+    cur->add_char(carry, 0);
+  }
+
   if (!cur->size) {
-    del_line(index);
+    del_line(idx);
     prev->newLine = true;
     return false;
   }
-  if (cur->newLine) {
+  return !cur->newLine;
+}
+
+bool Editor::pop_prev_add_cur_str(const ui idx) {
+  if (idx == 0 || idx >= buffer.size())
+    return false;
+
+  Gstring *cur = buffer[idx].get();
+  Gstring *prev = buffer[idx - 1].get();
+
+  const ui slack = maxCols - prev->size;
+  const ui cpy_size = std::min(slack, cur->size);
+
+  if (cpy_size == 0) {
+    return pop_prev_add_cur(idx);
+  }
+
+  char *segment = cur->pop_str(cpy_size);
+  prev->append_str(segment, cpy_size);
+  if (!cur->size) {
+    del_line(idx);
+    prev->newLine = true;
     return false;
   }
-  return true;
+  return !cur->newLine;
 }
 
 void Editor::del_zero() {
@@ -162,25 +159,48 @@ void Editor::del_zero() {
   }
 }
 
-/*FOR THESE TWO WANT TO ADD SUPPORT TO GO UP
- * AND DOWN WHEN AT END*/
 void Editor::left_key() { col -= (col > 0); }
 void Editor::right_key() { col += (col < buffer[row]->size); }
-/*FOR THESE TWO WANT TO ADD SUPPORT TO GO UP
- * AND DOWN WHEN AT END*/
+
+void Editor::del_middle_wrap() {
+  ui tmp_row = row + 1;
+  const ui buff_size = buffer.size();
+  while (tmp_row < buff_size) {
+    Gstring *cur = buffer[tmp_row - 1].get();
+    Gstring *next = buffer[tmp_row].get();
+    cur->add_char(next->pop_head(), cur->size);
+    if (next->newLine) {
+      if (!next->size) {
+        del_line(tmp_row);
+        cur->newLine = true;
+      }
+      return;
+    }
+    if (!next->size) {
+      del_line(tmp_row);
+      cur->newLine = true;
+      return;
+    }
+    ++tmp_row;
+  }
+}
+
 void Editor::key_backspace() {
   if (col) {
     --col;
     buffer[row]->del_char(col);
-    return;
-  } else {
-    if (!row) {
-      return;
+    if (!buffer[row]->newLine) {
+      del_middle_wrap();
     }
-    del_zero();
-    --row;
-    col = buffer[row]->size;
+    return;
   }
+
+  if (!row) {
+    return;
+  }
+  del_zero();
+  --row;
+  col = buffer[row]->size;
 }
 void Editor::key_enter() {
   Gstring *cur = buffer[row].get();
@@ -197,7 +217,7 @@ void Editor::key_enter() {
 }
 
 void Editor::key_char(const char c) {
-  if (buffer[row]->size + 1 < maxCols) {
+  if (buffer[row]->size + 1 <= maxCols) {
     buffer[row]->add_char(c, col);
     ++col;
   } else {
@@ -206,35 +226,6 @@ void Editor::key_char(const char c) {
     col = 1;
   }
 }
-
-/*
-void Editor::draw_buffer() const {
-  werase(stdscr); // clear whole screen (cheap if -o)
-
-  ui screen_row = 0;
-  const ui buf_size = buffer.size();
-
-  for (ui i = firstVisibleRow; i < buf_size && screen_row < maxRows;
-       ++i, ++screen_row) {
-    const Gstring &s = *buffer[i];
-    const ui len1 = s.gstart;
-    const ui len2 = s.size - len1;
-    const char *base = s.string;
-
-    if (len1)
-      mvwaddnstr(stdscr, screen_row, 0, base, len1);
-
-    if (len2)
-      mvwaddnstr(stdscr, screen_row, len1, base + s.gend + 1, len2);
-
-    // DON'T THINK I NEED BELOW LINE BUT PUT BACK IF BROKEN
-    //  wclrtoeol(stdscr); // erase leftovers if line shrank
-    // DON'T THINK I NEED ABOVE LINE BUT PUT BACK IF BROKEN
-  }
-  wmove(stdscr, row - firstVisibleRow, col);
-  wrefresh(stdscr);
-}
-*/
 
 void Editor::draw_buffer() {
   wclear(stdscr);
@@ -307,3 +298,5 @@ void Editor::main_loop() {
   }
   endwin();
 }
+
+Editor::~Editor() { free(disp_str); }

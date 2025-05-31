@@ -41,19 +41,21 @@ void Gstring::move(const ui index) {
 }
 
 void Gstring::grow() {
+  gend = cap;
+  gstart = cap;
   const ui new_cap = std::min(cap * 2, Gstring::MAXLEN);
+  const ui extra = new_cap - cap;
   string = (char *)realloc(string, new_cap);
+  gsize += extra;
   gend = new_cap - 1;
-  gsize += cap;
   cap = new_cap;
 }
 
 void Gstring::add_char(const char c, const ui index) {
   if (!gsize) {
     grow();
-  } else {
-    move(index);
   }
+  move(index);
   assert(gsize);
   string[index] = c;
   ++gstart;
@@ -98,24 +100,17 @@ char Gstring::pop_head() {
   return tmp;
 }
 
-inline char Gstring::char_at(const ui index) const {
+char Gstring::char_at(const ui index) const {
   return index < gstart ? string[index] : string[index + gsize];
 }
 
 char *Gstring::enter(const ui index) {
   newLine = true;
-  // THINK I CHECK FOR THIS
-  // SO GONNA COMMENT OUT
-  /*
-  if (index >= size) {
-    return nullptr;
-  }
-  */
   move(index);
   char *str = string + index + gsize;
   gend = cap - 1;
   size = index;
-  gsize = cap - gsize;
+  gsize = cap - size;
   return str;
 }
 
@@ -126,11 +121,20 @@ void Gstring::replace(const char c, const ui index) {
 
 char *Gstring::pop_str(const ui cpy_size) {
   assert(size);
-  move(0);
-  char *str = string + gsize;
-  gend += cpy_size;
-  gsize += cpy_size;
-  size -= cpy_size;
+  char *str;
+  if (gsize) {
+    move(0);
+    str = string + gsize;
+    gend += cpy_size;
+    gsize += cpy_size;
+    size -= cpy_size;
+  } else {
+    str = string;
+    gstart = 0;
+    gend = cpy_size;
+    size -= cpy_size;
+    gsize = cap - size;
+  }
   return str;
 }
 
@@ -142,4 +146,4 @@ void Gstring::append_str(const char *str, const ui cpy_size) {
   size += cpy_size;
 }
 
-void Gstring::free_str() { free(string); }
+Gstring::~Gstring() { free(string); }

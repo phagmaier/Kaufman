@@ -12,6 +12,7 @@ struct Gstring {
   /*CONSTRUCTOR*/
   Gstring();
   Gstring(const char *str, const ui str_size);
+  ~Gstring();
   /*CONSTRUCTOR*/
 
   /*VARS*/
@@ -35,8 +36,7 @@ struct Gstring {
   char pop_head();
   char *pop_str(const ui cpy_size);
   void replace(const char c, const ui index);
-  void free_str();
-  inline char char_at(const ui index) const;
+  char char_at(const ui index) const;
   char *enter(const ui index);
   /*FUNCS*/
 };

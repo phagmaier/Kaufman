@@ -10,6 +10,7 @@ using buff_vec = std::vector<std::unique_ptr<Gstring>>;
 struct Editor {
   Editor(const std::string &fileName);
   Editor(const char *fileName);
+  ~Editor();
   std::string fileName;
   ui row;
   ui col;
@@ -27,6 +28,7 @@ struct Editor {
   bool pop_prev_add_cur_str(const ui index);
   bool pop_prev_add_cur(const ui index);
   void del_zero();
+  void del_middle_wrap();
   void key_backspace();
   void key_enter();
   void key_char(const char c);
