@@ -38,5 +38,6 @@ struct Gstring {
   void replace(const char c, const ui index);
   char char_at(const ui index) const;
   char *enter(const ui index);
+  void load_apped(std::string &str);
   /*FUNCS*/
 };

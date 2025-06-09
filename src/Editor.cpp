@@ -1,5 +1,7 @@
 #include "Editor.h"
 #include <cstring>
+#include <fstream>
+#include <memory>
 
 Editor::Editor(const std::string &fileName)
     : fileName{fileName}, row{0}, col{0}, firstVisibleRow{0} {
@@ -12,7 +14,8 @@ Editor::Editor(const std::string &fileName)
   Gstring::MAXLEN = maxCols;
   buffer.reserve(100);
   buffer.emplace_back(std::make_unique<Gstring>());
-  disp_str = (char *)malloc(maxCols);
+  disp_str = (char *)malloc(maxCols + 1);
+  disp_str[maxCols] = 0;
   /* load/save*/
   // CODE HERE
   /* load/save*/
@@ -29,15 +32,48 @@ Editor::Editor(const char *fileName)
   Gstring::MAXLEN = maxCols;
   buffer.reserve(100);
   buffer.emplace_back(std::make_unique<Gstring>());
-  disp_str = (char *)malloc(maxCols);
+  disp_str = (char *)malloc(maxCols + 1);
+  disp_str[maxCols] = 0;
   /* load/save*/
   // CODE HERE
   /* load/save*/
 }
 
-void Editor::resize() { std::cerr << "ERROR UNABLE TO RESIZE YET"; }
-void Editor::load_file() { std::cerr << "LOAD FILE: NOT IMPLIMENTED YET"; }
-void Editor::save_file() { std::cerr << "SAVE FILE: NOT IMPLIMENTED YET"; }
+void Editor::resize(const ui new_row, const ui new_col) {
+  std::cerr << "RESIZE: NOT IMPLIEMNTED YET";
+}
+void Editor::load_file() {
+  buffer.clear();
+  buffer.reserve(100);
+  std::ifstream inputFile("filename.txt");
+  assert(inputFile.is_open());
+  std::string line;
+  line.reserve(100);
+  while (getline(inputFile, line)) {
+    while (line.size()) {
+      buffer.emplace_back(std::make_unique<Gstring>());
+      buffer[buffer.size() - 1]->load_apped(line);
+    }
+    buffer[buffer.size() - 1]->newLine = true;
+  }
+}
+
+void Editor::save_file() {
+  const ui buff_size = buffer.size();
+  std::fstream outputFile;
+  outputFile.open(fileName, std::ios::out);
+  assert(outputFile.is_open());
+  for (ui i = 0; i < buff_size; ++i) {
+    const Gstring *tmp = buffer[i].get();
+    memcpy(disp_str, tmp->string, tmp->gstart);
+    const ui r_size = tmp->size - tmp->gstart;
+    memcpy(disp_str + tmp->gstart, tmp->string + tmp->gend + 1, r_size);
+    outputFile.write(disp_str, tmp->size);
+    if (tmp->newLine) {
+      outputFile << "\n";
+    }
+  }
+}
 
 void Editor::del_line(const ui index) { buffer.erase(buffer.begin() + index); }
 
@@ -140,27 +176,6 @@ bool Editor::pop_prev_add_cur_str(const ui idx) {
   return !cur->newLine;
 }
 
-void Editor::del_zero() {
-  ui cur_idx = row;
-  if (!buffer[cur_idx]->size) {
-    buffer[cur_idx - 1]->newLine = true;
-    del_line(cur_idx);
-
-    return;
-  }
-  if (buffer[row - 1]->newLine) {
-    buffer[row - 1]->newLine = false;
-    while (pop_prev_add_cur_str(cur_idx)) {
-      ++cur_idx;
-    }
-  } else {
-    buffer[row - 1]->del_char(buffer[row - 1]->size - 1);
-    while (pop_prev_add_cur(cur_idx)) {
-      ++cur_idx;
-    }
-  }
-}
-
 void Editor::left_key() { col -= (col > 0); }
 void Editor::right_key() { col += (col < buffer[row]->size); }
 
@@ -187,6 +202,31 @@ void Editor::del_middle_wrap() {
   }
 }
 
+void Editor::del_zero() {
+  ui cur_idx = row;
+  if (!buffer[cur_idx]->size) {
+    buffer[cur_idx - 1]->newLine = true;
+    del_line(cur_idx);
+    col = buffer[row - 1]->size;
+    return;
+  }
+  if (buffer[row - 1]->newLine) {
+    buffer[row - 1]->newLine = false;
+    ui prev_line_size = buffer[row - 1]->size;
+    while (pop_prev_add_cur_str(cur_idx)) {
+      ++cur_idx;
+      prev_line_size = buffer[cur_idx - 1]->size;
+    }
+    col = prev_line_size;
+  } else {
+    buffer[row - 1]->del_char(buffer[row - 1]->size - 1);
+    while (pop_prev_add_cur(cur_idx)) {
+      ++cur_idx;
+    }
+    col = buffer[row - 1]->size;
+  }
+}
+
 void Editor::key_backspace() {
   if (col) {
     --col;
@@ -202,7 +242,6 @@ void Editor::key_backspace() {
   }
   del_zero();
   --row;
-  col = buffer[row]->size;
 }
 void Editor::key_enter() {
   Gstring *cur = buffer[row].get();

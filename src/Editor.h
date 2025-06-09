@@ -33,7 +33,7 @@ struct Editor {
   void key_enter();
   void key_char(const char c);
   void draw_buffer();
-  void resize();
+  void resize(const ui new_row, const ui new_col);
   void handleInput(int ch);
   void main_loop();
   void load_file();

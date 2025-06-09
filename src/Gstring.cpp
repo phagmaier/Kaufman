@@ -1,4 +1,5 @@
 #include "Gstring.h"
+#include <cstring>
 ui Gstring::MAXLEN = 64;
 Gstring::Gstring()
     : cap{DEFSIZE}, size{0}, gsize{DEFSIZE}, gstart{0}, gend{DEFSIZE - 1},
@@ -144,6 +145,16 @@ void Gstring::append_str(const char *str, const ui cpy_size) {
   gstart += cpy_size;
   gsize -= cpy_size;
   size += cpy_size;
+}
+
+void Gstring::load_apped(std::string &str) {
+  move(size);
+  const ui cpy_size = str.size() <= gsize ? gsize : gsize;
+  memcpy(string + gstart, str.c_str(), cpy_size);
+  gstart += cpy_size;
+  gsize -= cpy_size;
+  size += cpy_size;
+  str.erase(0, cpy_size);
 }
 
 Gstring::~Gstring() { free(string); }
